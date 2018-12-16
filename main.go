@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	leskracht "leskracht/leskracht"
+	leskracht "leskracht/server/leskracht"
 
 	"github.com/graphql-go/graphql"
 )
@@ -23,10 +23,10 @@ var userType = graphql.NewObject(graphql.ObjectConfig{
 			Type: graphql.String,
 		},
 		"email": &graphql.Field{
-			Type: graphql.Int,
+			Type: graphql.String,
 		},
 		"birthDate": &graphql.Field{
-			Type: graphql.Int,
+			Type: graphql.String,
 		},
 	},
 })
@@ -44,7 +44,7 @@ var messageType = graphql.NewObject(graphql.ObjectConfig{
 			Type: graphql.String,
 		},
 		"date": &graphql.Field{
-			Type: graphql.Int,
+			Type: graphql.String,
 		},
 	},
 })
@@ -52,10 +52,7 @@ var messageType = graphql.NewObject(graphql.ObjectConfig{
 var rootQuery = graphql.NewObject(graphql.ObjectConfig{
 	Name: "RootQuery",
 	Fields: graphql.Fields{
-		/*
-		   curl -g 'http://localhost:8080/graphql?query=query{user(id:1){id,activities{id}}}'
-		   curl -g 'http://localhost:8080/graphql?query={user(id:1){id,activities{weather,id,distance,pace,place,date}}}'
-		*/
+		/* curl -g 'http://localhost:8080/graphql?query={user(firstName:"Astrid"){lastName}}' */
 		"user": &graphql.Field{
 			Type:        userType,
 			Description: "Get single user",
@@ -75,6 +72,33 @@ var rootQuery = graphql.NewObject(graphql.ObjectConfig{
 				person := leskracht.GetUser(firstName)
 				fmt.Println("person", person)
 				return person, nil
+			},
+		},
+		/* curl -g 'http://localhost:8080/graphql?query={users{lastName}}' */
+		"users": &graphql.Field{
+			Type:        graphql.NewList(userType),
+			Description: "Get single user",
+			Args: graphql.FieldConfigArgument{
+				"id": &graphql.ArgumentConfig{
+					Type: graphql.Int,
+				},
+				"firstName": &graphql.ArgumentConfig{
+					Type: graphql.String,
+				},
+				"lastName": &graphql.ArgumentConfig{
+					Type: graphql.String,
+				},
+				"email": &graphql.ArgumentConfig{
+					Type: graphql.String,
+				},
+				"birthDate": &graphql.ArgumentConfig{
+					Type: graphql.String,
+				},
+			},
+			Resolve: func(params graphql.ResolveParams) (interface{}, error) {
+				persons := leskracht.GetAllUsers()
+				fmt.Println("persons", persons)
+				return persons, nil
 			},
 		},
 		/*
@@ -119,19 +143,33 @@ var rootMutation = graphql.NewObject(graphql.ObjectConfig{
 					Type: graphql.String,
 				},
 				"email": &graphql.ArgumentConfig{
-					Type: graphql.Int,
+					Type: graphql.String,
 				},
 				"birthDate": &graphql.ArgumentConfig{
-					Type: graphql.Int,
+					Type: graphql.String,
 				},
 			},
 			Resolve: func(params graphql.ResolveParams) (interface{}, error) {
 				firstName, _ := params.Args["firstName"].(string)
 				lastName, _ := params.Args["lastName"].(string)
 				email, _ := params.Args["email"].(string)
-				birthDate, _ := params.Args["birthDate"].(int)
+				birthDate, _ := params.Args["birthDate"].(string)
 				newUser := leskracht.CreateUser(firstName, lastName, email, birthDate)
 				return newUser, nil
+			},
+		},
+		"deleteUser": &graphql.Field{
+			Type: userType,
+			Args: graphql.FieldConfigArgument{
+				"id": &graphql.ArgumentConfig{
+					Type: graphql.Int,
+				},
+			},
+			Resolve: func(params graphql.ResolveParams) (interface{}, error) {
+				id, _ := params.Args["id"].(int)
+				leskracht.DeleteUser(id)
+				var user leskracht.User
+				return user, nil
 			},
 		},
 	},

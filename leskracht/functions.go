@@ -88,6 +88,7 @@ func GetUser(name string) User {
 		firstName string
 		lastName  string
 		email     string
+		birthDate string
 	)
 	for rows.Next() {
 
@@ -107,11 +108,63 @@ func GetUser(name string) User {
 	user.FirstName = firstName
 	user.LastName = lastName
 	user.Email = email
+	user.BirthDate = birthDate
 
 	return user
 }
 
-func CreateUser(firstName string, secondName string, email string, birthDate int) User {
+func GetAllUsers() []User {
+	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
+		"dbname=%s sslmode=disable",
+		host, port, user, dbname)
+	db, err := sql.Open("postgres", psqlInfo)
+	if err != nil {
+		panic(err)
+	}
+	defer db.Close()
+
+	// Query the database.
+	rows, err := db.Query(`
+		SELECT
+			*
+		FROM users
+		`)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+	var (
+		id        int
+		firstName string
+		lastName  string
+		email     string
+		birthDate string
+	)
+	var users []User
+	for rows.Next() {
+
+		if err := rows.Scan(&id, &firstName, &lastName, &email, &birthDate); err != nil {
+			log.Fatal(err)
+		}
+		var user User
+		user.ID = id
+		user.FirstName = firstName
+		user.LastName = lastName
+		user.Email = email
+		user.BirthDate = birthDate
+
+		fmt.Printf("%d, %s, %s, %s\n", id, firstName, lastName, email)
+		users = append(users, user)
+	}
+
+	// Check for errors after we are done iterating over rows.
+	if err := rows.Err(); err != nil {
+		log.Fatal(err)
+	}
+	return users
+}
+
+func CreateUser(firstName string, secondName string, email string, birthDate string) User {
 	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
 		"dbname=%s sslmode=disable",
 		host, port, user, dbname)
@@ -131,32 +184,39 @@ func CreateUser(firstName string, secondName string, email string, birthDate int
 
 	fmt.Println("mutation", rows)
 	defer rows.Close()
-	// var (
-	// 	id        int
-	// 	firstName string
-	// 	lastName  string
-	// 	email     string
-	// )
-	// for rows.Next() {
 
-	// 	if err := rows.Scan(&id, &firstName, &lastName, &email); err != nil {
-	// 		log.Fatal(err)
-	// 	}
+	if err := rows.Err(); err != nil {
+		log.Fatal(err)
+	}
+	var user User
 
-	// 	fmt.Printf("%d, %s, %s, %s\n", id, firstName, lastName, email)
-	// }
+	return user
+}
+
+func DeleteUser(id int) {
+	fmt.Println("delete id", id)
+	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
+		"dbname=%s sslmode=disable",
+		host, port, user, dbname)
+	db, err := sql.Open("postgres", psqlInfo)
+	if err != nil {
+		panic(err)
+	}
+	defer db.Close()
+
+	// Query the database.
+	rows, err := db.Query(`
+		DELETE FROM users WHERE id = $1`, id)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer rows.Close()
 
 	// Check for errors after we are done iterating over rows.
 	if err := rows.Err(); err != nil {
 		log.Fatal(err)
 	}
-	var user User
-	// user.ID = id
-	// user.FirstName = firstName
-	// user.LastName = lastName
-	// user.Email = email
-
-	return user
 }
 
 func GetMessage(id int) Message {
